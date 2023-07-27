@@ -6,12 +6,20 @@
 
 
 
+ShockPotDriver::ShockPotDriver()
+{
+    for (int i = 0; i < sizeof(this->pot); i++)
+    {
+        this->pot[i].pin = ShockPotPins[i];
+    }
+}
+
 
 void ShockPotDriver::setReading()
 {
     for (int i = 0; i < sizeof(this->pot); i++)
     {
-        this->pot[i].val = analogRead(A0 + i);
+        this->pot[i].val = analogRead(this->pot[i].pin);
         delay(10);
     }
 
