@@ -43,6 +43,6 @@ int ShockPotDriver::getReading()
 void ShockPotDriver::getPosition()
 {
     Serial.println("SIKE!");
-    // Very advace complicated math goes here
+    // Very advanced complicated math goes here
     // Like calc and shit dawg
 }
