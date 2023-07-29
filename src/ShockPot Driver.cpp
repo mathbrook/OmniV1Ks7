@@ -15,6 +15,12 @@ ShockPotDriver::ShockPotDriver()
 }
 
 
+ShockPotDriver::~ShockPotDriver()
+{
+
+}
+
+
 void ShockPotDriver::setReading()
 {
     for (int i = 0; i < sizeof(this->pot); i++)
@@ -46,3 +52,4 @@ void ShockPotDriver::getPosition()
     // Very advanced complicated math goes here
     // Like calc and shit dawg
 }
+

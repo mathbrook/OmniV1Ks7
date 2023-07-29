@@ -23,6 +23,7 @@ private:
     ShockPot pot[4];
 public:
 	ShockPotDriver();
+    ~ShockPotDriver();
     void setReading();
     int  getReading();
     void getPosition();
@@ -33,3 +34,4 @@ static ShockPotDriver ShockPot_;
 
 
 #endif
+

@@ -8,6 +8,7 @@ void setup()
   	Serial.begin(9600);
 }
 
+
 void loop()
 {
   	// Take reading of Shock Pots
@@ -16,3 +17,4 @@ void loop()
   	// Print readings to Serial
   	ShockPot_.getReading();
 }
+
