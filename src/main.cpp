@@ -5,6 +5,8 @@
 #include <SD.h>
 #include <Metro.h>
 #include <TimeLib.h>
+#include <string>
+#include <std>
 
 int Steering = 14;
 int SteeringVal;
@@ -15,11 +17,25 @@ uint64_t last_sec_epoch;
 Metro timer_debug_RTC = Metro(1000);
 Adafruit_LSM9DS1 lsm = Adafruit_LSM9DS1();
 
+
 // #define LSM9DS1_SCL = 19
 // #define LSM9DS1_SDA = 18
 
+
+double Accelx;
+double Accely;
+double Accelz;
+double Magx;
+double Magy;
+double Magz;
+double Gyrox;
+double Gyroy;
+double Gyroz;
+
+
+
 void setupSensor()
-{
+{  
   // 1.) Set the accelerometer range
   lsm.setupAccel(lsm.LSM9DS1_ACCELRANGE_2G);
   // lsm.setupAccel(lsm.LSM9DS1_ACCELRANGE_4G);
@@ -93,6 +109,8 @@ void setupSD()
       Serial.println("All possible SD card log filenames are in use - please clean up the SD card");
     }
   }
+  logger.print("Time,Output,Steering Value, Accel-X, Accel-Y, Accel-Z, Mag-X, Mag-Y, Mag-Z, Gyro-X, Gyro-Y, Gyro-Z, ShockFL, ShockFR, ShockRL, ShockRR");
+  logger.println();
 }
 
 void write_to_SD()
@@ -113,9 +131,19 @@ void write_to_SD()
   logger.print(current_time);
   logger.print(",high");
   // logger.print(msg->id, HEX);
-  logger.print(",");
+  logger.print(","+SteeringVal);
   // logger.print(msg->len);
-  logger.print(",");
+  logger.print(","+Accelx);
+  logger.print(","+Accely);
+  logger.print(","+Accelz);
+  logger.print(","+Magx);
+  logger.print(","+Magy);
+  logger.print(","+Magz);
+  logger.print(","+Gyrox);
+  logger.print(","+Gyroy);
+  logger.print(","+Gyroz);
+
+
   /*
   for (int i = 0; i < msg->len; i++) {
       if (msg->buf[i] < 16) {
@@ -165,10 +193,11 @@ void loop()
   lsm.read(); /* ask it to read in the data */
 
   /* Get a new sensor event */
+  
   sensors_event_t a, m, g, temp;
-
+  
   lsm.getEvent(&a, &m, &g, &temp);
-  /*
+  
     Serial.print("Accel X: "); Serial.print(a.acceleration.x); Serial.print(" m/s^2");
     Serial.print("\tY: "); Serial.print(a.acceleration.y);     Serial.print(" m/s^2 ");
     Serial.print("\tZ: "); Serial.print(a.acceleration.z);     Serial.println(" m/s^2 ");
@@ -180,7 +209,17 @@ void loop()
     Serial.print("Gyro X: "); Serial.print(g.gyro.x);   Serial.print(" rad/s");
     Serial.print("\tY: "); Serial.print(g.gyro.y);      Serial.print(" rad/s");
     Serial.print("\tZ: "); Serial.print(g.gyro.z);      Serial.println(" rad/s");
-  */
+  
+   auto Accelx = std::to_string(a.acceleration.x);
+   Accely = a.acceleration.y;
+   Accelz = a.acceleration.z;
+   Magx = m.magnetic.x;
+   Magy = m.magnetic.y;
+   Magz = m.magnetic.z;
+   Gyrox = g.gyro.x;
+   Gyroy = g.gyro.y;
+   Gyroz = g.gyro.z;
+
   Serial.println("running");
   delay(200);
   write_to_SD();
