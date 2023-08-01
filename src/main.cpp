@@ -6,7 +6,6 @@
 #include <Metro.h>
 #include <TimeLib.h>
 #include <string>
-#include <std>
 
 int Steering = 14;
 int SteeringVal;
@@ -22,15 +21,16 @@ Adafruit_LSM9DS1 lsm = Adafruit_LSM9DS1();
 // #define LSM9DS1_SDA = 18
 
 
-double Accelx;
-double Accely;
-double Accelz;
-double Magx;
-double Magy;
-double Magz;
-double Gyrox;
-double Gyroy;
-double Gyroz;
+String Accelx;
+String Accely;
+String Accelz;
+String Magx;
+String Magy;
+String Magz;
+String Gyrox;
+String Gyroy;
+String Gyroz;
+String SteeringOut;
 
 
 
@@ -131,7 +131,7 @@ void write_to_SD()
   logger.print(current_time);
   logger.print(",high");
   // logger.print(msg->id, HEX);
-  logger.print(","+SteeringVal);
+  logger.print(","+SteeringOut);
   // logger.print(msg->len);
   logger.print(","+Accelx);
   logger.print(","+Accely);
@@ -186,7 +186,7 @@ void setup()
 void loop()
 {
 
-  SteeringVal = analogRead(Steering);
+  SteeringVal = analogRead(Steering)-548;
   Serial.println(SteeringVal);
   delay(50);
 
@@ -210,15 +210,16 @@ void loop()
     Serial.print("\tY: "); Serial.print(g.gyro.y);      Serial.print(" rad/s");
     Serial.print("\tZ: "); Serial.print(g.gyro.z);      Serial.println(" rad/s");
   
-   auto Accelx = std::to_string(a.acceleration.x);
-   Accely = a.acceleration.y;
-   Accelz = a.acceleration.z;
-   Magx = m.magnetic.x;
-   Magy = m.magnetic.y;
-   Magz = m.magnetic.z;
-   Gyrox = g.gyro.x;
-   Gyroy = g.gyro.y;
-   Gyroz = g.gyro.z;
+   Accelx = String(a.acceleration.x,2);
+   Accely = String(a.acceleration.y,2);
+   Accelz = String(a.acceleration.z,2);
+   Magx = String(m.magnetic.x,2);
+   Magy = String(m.magnetic.y,2);
+   Magz = String(m.magnetic.z,2);
+   Gyrox = String(g.gyro.x,2);
+   Gyroy = String(g.gyro.y,2);
+   Gyroz = String(g.gyro.z,2);
+   SteeringOut = String(SteeringVal);
 
   Serial.println("running");
   delay(200);
