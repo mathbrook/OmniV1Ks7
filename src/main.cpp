@@ -7,8 +7,19 @@
 #include <TimeLib.h>
 #include <string>
 
-int Steering = 14;
+int Steering = 21;
 int SteeringVal;
+
+int FRShock = 17;
+int FLShock = 16;
+int RRShock = 15;
+int RLShock = 14;
+int FRShockVal;
+int FLShockVal;
+int RRShockVal;
+int RLShockVal;
+
+
 File logger;
 uint64_t global_ms_offset = 0;
 Metro timer_flush = Metro(50);
@@ -31,6 +42,10 @@ String Gyrox;
 String Gyroy;
 String Gyroz;
 String SteeringOut;
+String FRShockOut;
+String FLShockOut;
+String RLShockOut;
+String RRShockOut;
 
 
 
@@ -142,6 +157,10 @@ void write_to_SD()
   logger.print(","+Gyrox);
   logger.print(","+Gyroy);
   logger.print(","+Gyroz);
+  logger.print(","+FLShockOut);
+  logger.print(","+FRShockOut);
+  logger.print(","+RLShockOut);
+  logger.print(","+RRShockOut);
 
 
   /*
@@ -160,6 +179,10 @@ void setup()
   // initialize digital pin LED_BUILTIN as an output.
   pinMode(LED_BUILTIN, OUTPUT);
   pinMode(Steering, INPUT);
+  pinMode(FRShock, INPUT);
+  pinMode(FLShock, INPUT);
+  pinMode(RRShock, INPUT);
+  pinMode(RLShock, INPUT);
   Serial.begin(9600);
   /*
   while (!Serial) {
@@ -172,8 +195,7 @@ void setup()
   if (!lsm.begin())
   {
     Serial.println("Oops ... unable to initialize the LSM9DS1. Check your wiring!");
-    while (1)
-      ;
+    // while (1);
   }
   Serial.println("Found LSM9DS1 9DOF");
 
@@ -186,8 +208,21 @@ void setup()
 void loop()
 {
 
-  SteeringVal = analogRead(Steering)-548;
-  Serial.println(SteeringVal);
+  // SteeringVal = analogRead(Steering)-548;
+  FRShockVal = analogRead(FRShock);
+  FLShockVal = analogRead(FLShock);
+  RRShockVal = analogRead(RRShock);
+  RLShockVal = analogRead(RLShock);
+  // Serial.println(SteeringVal);
+  Serial.print("Front Right shock value: ");
+  Serial.println(FRShockVal);
+  Serial.print("Front Left shock value: ");
+  Serial.println(FLShockVal);
+  Serial.print("Rear Right value: ");
+  Serial.println(RRShockVal);
+  Serial.print("Rear Left shock value: ");
+  Serial.println(RLShockVal);
+
   delay(50);
 
   lsm.read(); /* ask it to read in the data */
@@ -198,17 +233,17 @@ void loop()
   
   lsm.getEvent(&a, &m, &g, &temp);
   
-    Serial.print("Accel X: "); Serial.print(a.acceleration.x); Serial.print(" m/s^2");
-    Serial.print("\tY: "); Serial.print(a.acceleration.y);     Serial.print(" m/s^2 ");
-    Serial.print("\tZ: "); Serial.print(a.acceleration.z);     Serial.println(" m/s^2 ");
+    // Serial.print("Accel X: "); Serial.print(a.acceleration.x); Serial.print(" m/s^2");
+    // Serial.print("\tY: "); Serial.print(a.acceleration.y);     Serial.print(" m/s^2 ");
+    // Serial.print("\tZ: "); Serial.print(a.acceleration.z);     Serial.println(" m/s^2 ");
 
-    Serial.print("Mag X: "); Serial.print(m.magnetic.x);   Serial.print(" uT");
-    Serial.print("\tY: "); Serial.print(m.magnetic.y);     Serial.print(" uT");
-    Serial.print("\tZ: "); Serial.print(m.magnetic.z);     Serial.println(" uT");
+    // Serial.print("Mag X: "); Serial.print(m.magnetic.x);   Serial.print(" uT");
+    // Serial.print("\tY: "); Serial.print(m.magnetic.y);     Serial.print(" uT");
+    // Serial.print("\tZ: "); Serial.print(m.magnetic.z);     Serial.println(" uT");
 
-    Serial.print("Gyro X: "); Serial.print(g.gyro.x);   Serial.print(" rad/s");
-    Serial.print("\tY: "); Serial.print(g.gyro.y);      Serial.print(" rad/s");
-    Serial.print("\tZ: "); Serial.print(g.gyro.z);      Serial.println(" rad/s");
+    // Serial.print("Gyro X: "); Serial.print(g.gyro.x);   Serial.print(" rad/s");
+    // Serial.print("\tY: "); Serial.print(g.gyro.y);      Serial.print(" rad/s");
+    // Serial.print("\tZ: "); Serial.print(g.gyro.z);      Serial.println(" rad/s");
   
    Accelx = String(a.acceleration.x,2);
    Accely = String(a.acceleration.y,2);
@@ -220,8 +255,13 @@ void loop()
    Gyroy = String(g.gyro.y,2);
    Gyroz = String(g.gyro.z,2);
    SteeringOut = String(SteeringVal);
+   FRShockOut = String(FRShockVal);
+    FLShockOut = String(FLShockVal);
+    RRShockOut = String(RRShockVal);
+    RLShockOut = String(RLShockVal);
 
-  Serial.println("running");
+
+  // Serial.println("running");
   delay(200);
   write_to_SD();
 
