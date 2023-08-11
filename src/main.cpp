@@ -27,6 +27,8 @@ uint64_t last_sec_epoch;
 Metro timer_debug_RTC = Metro(1000);
 Adafruit_LSM9DS1 lsm = Adafruit_LSM9DS1();
 
+Metro timer_heartbeat = Metro(1000);
+Metro timer_print = Metro(1000);
 
 // #define LSM9DS1_SCL = 19
 // #define LSM9DS1_SDA = 18
@@ -86,7 +88,7 @@ void setupSD()
 {
 
   // Set up real-time clock
-  // Teensy3Clock.set(1660351622); // set time (epoch) at powerup  (COMMENT OUT THIS LINE AND PUSH ONCE RTC HAS BEEN SET!!!!)
+  // Teensy3Clock.set(1691742860); // set time (epoch) at powerup  (COMMENT OUT THIS LINE AND PUSH ONCE RTC HAS BEEN SET!!!!)
   setSyncProvider(getTeensy3Time); // registers Teensy RTC as system time
   if (timeStatus() != timeSet)
   {
@@ -208,22 +210,23 @@ void setup()
 void loop()
 {
 
-  // SteeringVal = analogRead(Steering)-548;
-  FRShockVal = analogRead(FRShock);
-  FLShockVal = analogRead(FLShock);
-  RRShockVal = analogRead(RRShock);
-  RLShockVal = analogRead(RLShock);
-  // Serial.println(SteeringVal);
-  Serial.print("Front Right shock value: ");
-  Serial.println(FRShockVal);
-  Serial.print("Front Left shock value: ");
-  Serial.println(FLShockVal);
-  Serial.print("Rear Right value: ");
-  Serial.println(RRShockVal);
-  Serial.print("Rear Left shock value: ");
-  Serial.println(RLShockVal);
+  if(timer_print.check()){
+    // SteeringVal = analogRead(Steering)-548;
+    FRShockVal = analogRead(FRShock);
+    FLShockVal = analogRead(FLShock);
+    RRShockVal = analogRead(RRShock);
+    RLShockVal = analogRead(RLShock);
+    // Serial.println(SteeringVal);
+    Serial.print("Front Right shock value: ");
+    Serial.println(FRShockVal);
+    Serial.print("Front Left shock value: ");
+    Serial.println(FLShockVal);
+    Serial.print("Rear Right value: ");
+    Serial.println(RRShockVal);
+    Serial.print("Rear Left shock value: ");
+    Serial.println(RLShockVal);
+  }
 
-  delay(50);
 
   lsm.read(); /* ask it to read in the data */
 
@@ -233,35 +236,34 @@ void loop()
   
   lsm.getEvent(&a, &m, &g, &temp);
   
-    // Serial.print("Accel X: "); Serial.print(a.acceleration.x); Serial.print(" m/s^2");
-    // Serial.print("\tY: "); Serial.print(a.acceleration.y);     Serial.print(" m/s^2 ");
-    // Serial.print("\tZ: "); Serial.print(a.acceleration.z);     Serial.println(" m/s^2 ");
+  // Serial.print("Accel X: "); Serial.print(a.acceleration.x); Serial.print(" m/s^2");
+  // Serial.print("\tY: "); Serial.print(a.acceleration.y);     Serial.print(" m/s^2 ");
+  // Serial.print("\tZ: "); Serial.print(a.acceleration.z);     Serial.println(" m/s^2 ");
 
-    // Serial.print("Mag X: "); Serial.print(m.magnetic.x);   Serial.print(" uT");
-    // Serial.print("\tY: "); Serial.print(m.magnetic.y);     Serial.print(" uT");
-    // Serial.print("\tZ: "); Serial.print(m.magnetic.z);     Serial.println(" uT");
+  // Serial.print("Mag X: "); Serial.print(m.magnetic.x);   Serial.print(" uT");
+  // Serial.print("\tY: "); Serial.print(m.magnetic.y);     Serial.print(" uT");
+  // Serial.print("\tZ: "); Serial.print(m.magnetic.z);     Serial.println(" uT");
 
-    // Serial.print("Gyro X: "); Serial.print(g.gyro.x);   Serial.print(" rad/s");
-    // Serial.print("\tY: "); Serial.print(g.gyro.y);      Serial.print(" rad/s");
-    // Serial.print("\tZ: "); Serial.print(g.gyro.z);      Serial.println(" rad/s");
-  
-   Accelx = String(a.acceleration.x,2);
-   Accely = String(a.acceleration.y,2);
-   Accelz = String(a.acceleration.z,2);
-   Magx = String(m.magnetic.x,2);
-   Magy = String(m.magnetic.y,2);
-   Magz = String(m.magnetic.z,2);
-   Gyrox = String(g.gyro.x,2);
-   Gyroy = String(g.gyro.y,2);
-   Gyroz = String(g.gyro.z,2);
-   SteeringOut = String(SteeringVal);
-   FRShockOut = String(FRShockVal);
-    FLShockOut = String(FLShockVal);
-    RRShockOut = String(RRShockVal);
-    RLShockOut = String(RLShockVal);
+  // Serial.print("Gyro X: "); Serial.print(g.gyro.x);   Serial.print(" rad/s");
+  // Serial.print("\tY: "); Serial.print(g.gyro.y);      Serial.print(" rad/s");
+  // Serial.print("\tZ: "); Serial.print(g.gyro.z);      Serial.println(" rad/s");
+
+  Accelx = String(a.acceleration.x,2);
+  Accely = String(a.acceleration.y,2);
+  Accelz = String(a.acceleration.z,2);
+  Magx = String(m.magnetic.x,2);
+  Magy = String(m.magnetic.y,2);
+  Magz = String(m.magnetic.z,2);
+  Gyrox = String(g.gyro.x,2);
+  Gyroy = String(g.gyro.y,2);
+  Gyroz = String(g.gyro.z,2);
+  SteeringOut = String(SteeringVal);
+  FRShockOut = String(FRShockVal);
+  FLShockOut = String(FLShockVal);
+  RRShockOut = String(RRShockVal);
+  RLShockOut = String(RLShockVal);
 
 
-  // Serial.println("running");
   delay(200);
   write_to_SD();
 
@@ -277,8 +279,7 @@ void loop()
     // CAN.write(msg_tx);
   }
 
-  digitalWrite(LED_BUILTIN, HIGH); // turn the LED on (HIGH is the voltage level)
-  // delay(500);                      // wait for a second
-  // digitalWrite(LED_BUILTIN, LOW);   // turn the LED off by making the voltage LOW
-  // delay(500);                      // wait for a second
+  if(timer_heartbeat.check()){
+      digitalToggle(LED_BUILTIN); // turn the LED on (HIGH is the voltage level)
+  }
 }
