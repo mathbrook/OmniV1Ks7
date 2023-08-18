@@ -19,6 +19,9 @@ int FLShockVal;
 int RRShockVal;
 int RLShockVal;
 
+int LED_RED = 6;
+int LED_GREEN = 7;
+int LED_BLUE = 8;
 
 File logger;
 uint64_t global_ms_offset = 0;
@@ -28,11 +31,12 @@ Metro timer_debug_RTC = Metro(1000);
 Adafruit_LSM9DS1 lsm = Adafruit_LSM9DS1();
 
 Metro timer_heartbeat = Metro(1000);
-Metro timer_print = Metro(1000);
+Metro timer_print = Metro(50);
+Metro timer_WriteToSD = Metro(50);     // 50 mili seconds is 20 HZ
+Metro timer_StatusLEDon = Metro(1000); // time for status led to stay on
 
 // #define LSM9DS1_SCL = 19
 // #define LSM9DS1_SDA = 18
-
 
 String Accelx;
 String Accely;
@@ -49,10 +53,8 @@ String FLShockOut;
 String RLShockOut;
 String RRShockOut;
 
-
-
 void setupSensor()
-{  
+{
   // 1.) Set the accelerometer range
   lsm.setupAccel(lsm.LSM9DS1_ACCELRANGE_2G);
   // lsm.setupAccel(lsm.LSM9DS1_ACCELRANGE_4G);
@@ -103,9 +105,16 @@ void setupSD()
   Serial.println("Initializing SD card...");
   SdFile::dateTimeCallback(sd_date_time); // Set date/time callback function
   // SD.begin(BUILTIN_SDCARD); do no oneed this line, it is auto ran in one of the header files
-  if (!SD.begin(BUILTIN_SDCARD))
-  { // Begin Arduino SD API (Teensy 3.5)
-    Serial.println("SD card failed or not present");
+  while (!SD.begin(BUILTIN_SDCARD))
+  {
+    delay(1); // will pause Zero, Leonardo, etc until serial console opens
+    digitalWrite(LED_RED, HIGH);
+    // if (!SD.begin(BUILTIN_SDCARD))
+    // { // Begin Arduino SD API (Teensy 3.5)
+    if (timer_print.check())
+    {
+      Serial.println("SD card failed or not present");
+    }
   }
 
   char filename[] = "data0000.CSV";
@@ -148,30 +157,28 @@ void write_to_SD()
   logger.print(current_time);
   logger.print(",high");
   // logger.print(msg->id, HEX);
-  logger.print(","+SteeringOut);
+  logger.print("," + SteeringOut);
   // logger.print(msg->len);
-  logger.print(","+Accelx);
-  logger.print(","+Accely);
-  logger.print(","+Accelz);
-  logger.print(","+Magx);
-  logger.print(","+Magy);
-  logger.print(","+Magz);
-  logger.print(","+Gyrox);
-  logger.print(","+Gyroy);
-  logger.print(","+Gyroz);
-  logger.print(","+FLShockOut);
-  logger.print(","+FRShockOut);
-  logger.print(","+RLShockOut);
-  logger.print(","+RRShockOut);
-
-
+  logger.print("," + Accelx);
+  logger.print("," + Accely);
+  logger.print("," + Accelz);
+  logger.print("," + Magx);
+  logger.print("," + Magy);
+  logger.print("," + Magz);
+  logger.print("," + Gyrox);
+  logger.print("," + Gyroy);
+  logger.print("," + Gyroz);
+  logger.print("," + FLShockOut);
+  logger.print("," + FRShockOut);
+  logger.print("," + RLShockOut);
+  logger.print("," + RRShockOut);
   /*
-  for (int i = 0; i < msg->len; i++) {
-      if (msg->buf[i] < 16) {
-          logger.print("0");
-      }
-      logger.print(msg->buf[i], HEX);
-  }*/
+ for (int i = 0; i < msg->len; i++) {
+     if (msg->buf[i] < 16) {
+         logger.print("0");
+     }
+     logger.print(msg->buf[i], HEX);
+ }*/
   logger.println();
 }
 
@@ -185,6 +192,9 @@ void setup()
   pinMode(FLShock, INPUT);
   pinMode(RRShock, INPUT);
   pinMode(RLShock, INPUT);
+  pinMode(LED_RED, OUTPUT);
+  pinMode(LED_GREEN, OUTPUT);
+  pinMode(LED_BLUE, OUTPUT);
   Serial.begin(9600);
   /*
   while (!Serial) {
@@ -209,14 +219,33 @@ void setup()
 // the loop function runs over and over again forever
 void loop()
 {
+  digitalWrite(LED_BLUE, LOW);
+  SteeringVal = analogRead(Steering); //-548;
+  FRShockVal = analogRead(FRShock);
+  FLShockVal = analogRead(FLShock);
+  RRShockVal = analogRead(RRShock);
+  RLShockVal = analogRead(RLShock);
 
-  if(timer_print.check()){
-    // SteeringVal = analogRead(Steering)-548;
-    FRShockVal = analogRead(FRShock);
-    FLShockVal = analogRead(FLShock);
-    RRShockVal = analogRead(RRShock);
-    RLShockVal = analogRead(RLShock);
-    // Serial.println(SteeringVal);
+  lsm.read(); /* ask it to read in the data */
+
+  /* Get a new sensor event */
+
+  sensors_event_t a, m, g, temp;
+
+  lsm.getEvent(&a, &m, &g, &temp);
+
+  digitalWrite(LED_RED, LOW);
+
+  if (timer_StatusLEDon.check())
+  {
+    digitalWrite(LED_BLUE, LOW);
+  }
+
+  if (timer_print.check())
+  {
+    Serial.print("Steering Val: ");
+    Serial.println(SteeringVal);
+
     Serial.print("Front Right shock value: ");
     Serial.println(FRShockVal);
     Serial.print("Front Left shock value: ");
@@ -225,47 +254,58 @@ void loop()
     Serial.println(RRShockVal);
     Serial.print("Rear Left shock value: ");
     Serial.println(RLShockVal);
+
+    Serial.print("Accel X: ");
+    Serial.print(a.acceleration.x);
+    Serial.print(" m/s^2");
+    Serial.print("\tY: ");
+    Serial.print(a.acceleration.y);
+    Serial.print(" m/s^2 ");
+    Serial.print("\tZ: ");
+    Serial.print(a.acceleration.z);
+    Serial.println(" m/s^2 ");
+
+    Serial.print("Mag X: ");
+    Serial.print(m.magnetic.x);
+    Serial.print(" uT");
+    Serial.print("\tY: ");
+    Serial.print(m.magnetic.y);
+    Serial.print(" uT");
+    Serial.print("\tZ: ");
+    Serial.print(m.magnetic.z);
+    Serial.println(" uT");
+
+    Serial.print("Gyro X: ");
+    Serial.print(g.gyro.x);
+    Serial.print(" rad/s");
+    Serial.print("\tY: ");
+    Serial.print(g.gyro.y);
+    Serial.print(" rad/s");
+    Serial.print("\tZ: ");
+    Serial.print(g.gyro.z);
+    Serial.println(" rad/s");
   }
 
-
-  lsm.read(); /* ask it to read in the data */
-
-  /* Get a new sensor event */
-  
-  sensors_event_t a, m, g, temp;
-  
-  lsm.getEvent(&a, &m, &g, &temp);
-  
-  // Serial.print("Accel X: "); Serial.print(a.acceleration.x); Serial.print(" m/s^2");
-  // Serial.print("\tY: "); Serial.print(a.acceleration.y);     Serial.print(" m/s^2 ");
-  // Serial.print("\tZ: "); Serial.print(a.acceleration.z);     Serial.println(" m/s^2 ");
-
-  // Serial.print("Mag X: "); Serial.print(m.magnetic.x);   Serial.print(" uT");
-  // Serial.print("\tY: "); Serial.print(m.magnetic.y);     Serial.print(" uT");
-  // Serial.print("\tZ: "); Serial.print(m.magnetic.z);     Serial.println(" uT");
-
-  // Serial.print("Gyro X: "); Serial.print(g.gyro.x);   Serial.print(" rad/s");
-  // Serial.print("\tY: "); Serial.print(g.gyro.y);      Serial.print(" rad/s");
-  // Serial.print("\tZ: "); Serial.print(g.gyro.z);      Serial.println(" rad/s");
-
-  Accelx = String(a.acceleration.x,2);
-  Accely = String(a.acceleration.y,2);
-  Accelz = String(a.acceleration.z,2);
-  Magx = String(m.magnetic.x,2);
-  Magy = String(m.magnetic.y,2);
-  Magz = String(m.magnetic.z,2);
-  Gyrox = String(g.gyro.x,2);
-  Gyroy = String(g.gyro.y,2);
-  Gyroz = String(g.gyro.z,2);
+  Accelx = String(a.acceleration.x, 2);
+  Accely = String(a.acceleration.y, 2);
+  Accelz = String(a.acceleration.z, 2);
+  Magx = String(m.magnetic.x, 2);
+  Magy = String(m.magnetic.y, 2);
+  Magz = String(m.magnetic.z, 2);
+  Gyrox = String(g.gyro.x, 2);
+  Gyroy = String(g.gyro.y, 2);
+  Gyroz = String(g.gyro.z, 2);
   SteeringOut = String(SteeringVal);
   FRShockOut = String(FRShockVal);
   FLShockOut = String(FLShockVal);
   RRShockOut = String(RRShockVal);
   RLShockOut = String(RLShockVal);
 
-
-  delay(200);
-  write_to_SD();
+  if (timer_WriteToSD.check())
+  {
+    digitalWrite(LED_BLUE, HIGH);
+    write_to_SD();
+  }
 
   if (timer_flush.check())
   {
@@ -279,7 +319,8 @@ void loop()
     // CAN.write(msg_tx);
   }
 
-  if(timer_heartbeat.check()){
-      digitalToggle(LED_BUILTIN); // turn the LED on (HIGH is the voltage level)
+  if (timer_heartbeat.check())
+  {
+    digitalToggle(LED_BUILTIN); // turn the LED on (HIGH is the voltage level)
   }
 }
