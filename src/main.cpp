@@ -31,7 +31,7 @@ Metro timer_debug_RTC = Metro(1000);
 Adafruit_LSM9DS1 lsm = Adafruit_LSM9DS1();
 
 Metro timer_heartbeat = Metro(1000);
-Metro timer_print = Metro(50);
+Metro timer_print = Metro(250);
 Metro timer_WriteToSD = Metro(50);     // 50 mili seconds is 20 HZ
 Metro timer_StatusLEDon = Metro(1000); // time for status led to stay on
 
@@ -90,7 +90,7 @@ void setupSD()
 {
 
   // Set up real-time clock
-  // Teensy3Clock.set(1691742860); // set time (epoch) at powerup  (COMMENT OUT THIS LINE AND PUSH ONCE RTC HAS BEEN SET!!!!)
+  // Teensy3Clock.set(1692325055); // set time (epoch) at powerup  (COMMENT OUT THIS LINE AND PUSH ONCE RTC HAS BEEN SET!!!!)
   setSyncProvider(getTeensy3Time); // registers Teensy RTC as system time
   if (timeStatus() != timeSet)
   {
@@ -220,7 +220,7 @@ void setup()
 void loop()
 {
   digitalWrite(LED_BLUE, LOW);
-  SteeringVal = analogRead(Steering); //-548;
+  SteeringVal = analogRead(Steering)-657; //-657 from sensor installed on 8/17/23 and calibrated
   FRShockVal = analogRead(FRShock);
   FLShockVal = analogRead(FLShock);
   RRShockVal = analogRead(RRShock);
