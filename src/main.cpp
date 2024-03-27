@@ -6,7 +6,7 @@
 #include <Metro.h>
 #include <TimeLib.h>
 #include <string>
-
+#include <SimpleKalmanFilter.h>
 int Steering = 21;
 int SteeringVal;
 
@@ -23,6 +23,11 @@ int LED_RED = 6;
 int LED_GREEN = 7;
 int LED_BLUE = 8;
 
+
+const float cutoffhz = 10; // Hz, exponential filter low pass cutoff
+// Calculate filtering alpha value for the cutoff frequency  
+const double FILTERING_ALPHA = 2 * 3.14 * cutoffhz / (1 + 2 * 3.14 * cutoffhz);
+
 File logger;
 uint64_t global_ms_offset = 0;
 Metro timer_flush = Metro(50);
@@ -32,26 +37,47 @@ Adafruit_LSM9DS1 lsm = Adafruit_LSM9DS1();
 
 Metro timer_heartbeat = Metro(1000);
 Metro timer_print = Metro(250);
-Metro timer_WriteToSD = Metro(50);     // 50 mili seconds is 20 HZ
+#define LOGGING_FREQUENCY 100 // Hz, Frequency to log to SD
+Metro timer_WriteToSD = Metro(1000 / LOGGING_FREQUENCY); // Logging to SD timer. Period = 1000ms / LOGGING_FREQUENCY
 Metro timer_StatusLEDon = Metro(1000); // time for status led to stay on
 
 // #define LSM9DS1_SCL = 19
 // #define LSM9DS1_SDA = 18
 
+SimpleKalmanFilter accelX(1,1,0.01); //accelerometer X
+SimpleKalmanFilter accelY(1,1,0.01); //accelerometer Y
+SimpleKalmanFilter accelZ(1,1,0.01); //accelerometer Z
+float ax,ay,az;
+//
+SimpleKalmanFilter gyroX(1,1,0.01); //gyro roll
+SimpleKalmanFilter gyroY(1,1,0.01); //gyro pitch
+SimpleKalmanFilter gyroZ(1,1,0.01); //gyro heading
+float gx,gy,gz;
+
 String Accelx;
 String Accely;
 String Accelz;
+String filt_ax;
+String filt_ay;
+String filt_az;
 String Magx;
 String Magy;
 String Magz;
 String Gyrox;
 String Gyroy;
 String Gyroz;
+String filt_gx;
+String filt_gy;
+String filt_gz;
 String SteeringOut;
 String FRShockOut;
 String FLShockOut;
 String RLShockOut;
 String RRShockOut;
+
+unsigned long loop_count = 0; // Track the number of loop executions between writes to estimate sample coutn/freq
+elapsedMillis loop_duration; // Reset at the start of each loop
+uint16_t samples_per_sec = 0;
 
 void setupSensor()
 {
@@ -114,6 +140,7 @@ void setupSD()
     if (timer_print.check())
     {
       Serial.println("SD card failed or not present");
+      Serial.println("Retrying...");
     }
   }
 
@@ -135,7 +162,7 @@ void setupSD()
       Serial.println("All possible SD card log filenames are in use - please clean up the SD card");
     }
   }
-  logger.print("Time,Output,Steering Value, Accel-X, Accel-Y, Accel-Z, Mag-X, Mag-Y, Mag-Z, Gyro-X, Gyro-Y, Gyro-Z, ShockFL, ShockFR, ShockRL, ShockRR");
+  logger.print("Time,Output,Steering Value, Accel-X, Accel-Y, Accel-Z, Mag-X, Mag-Y, Mag-Z, Gyro-X, Gyro-Y, Gyro-Z, ShockFL, ShockFR, ShockRL, ShockRR, SampleCount,filtax,filtay,filtaz");
   logger.println();
 }
 
@@ -172,15 +199,10 @@ void write_to_SD()
   logger.print("," + FRShockOut);
   logger.print("," + RLShockOut);
   logger.print("," + RRShockOut);
-  /*
- for (int i = 0; i < msg->len; i++) {
-     if (msg->buf[i] < 16) {
-         logger.print("0");
-     }
-     logger.print(msg->buf[i], HEX);
- }*/
+  logger.printf("%d,%f,%f,%f,%f,%f,%f",samples_per_sec,ax,ay,az,gx,gy,gz);
   logger.println();
 }
+void update_value_filtered(int &old_reading,int new_reading, const double ADC_ALPHA);
 
 // the setup function runs once when you press reset or power the board
 void setup()
@@ -214,17 +236,18 @@ void setup()
   // helper to just set the default scaling we want, see above!
   setupSensor();
   setupSD();
+  loop_duration = 0;
 }
-
 // the loop function runs over and over again forever
 void loop()
 {
   digitalWrite(LED_BLUE, LOW);
+  
   SteeringVal = analogRead(Steering)-657; //-657 from sensor installed on 8/17/23 and calibrated
-  FRShockVal = analogRead(FRShock);
-  FLShockVal = analogRead(FLShock);
-  RRShockVal = analogRead(RRShock);
-  RLShockVal = analogRead(RLShock);
+  update_value_filtered(FRShockVal,analogRead(FRShock),FILTERING_ALPHA);
+  update_value_filtered(FLShockVal,analogRead(FLShock),FILTERING_ALPHA);
+  update_value_filtered(RRShockVal,analogRead(RRShock),FILTERING_ALPHA);
+  update_value_filtered(RLShockVal,analogRead(RLShock),FILTERING_ALPHA);
 
   lsm.read(); /* ask it to read in the data */
 
@@ -233,6 +256,13 @@ void loop()
   sensors_event_t a, m, g, temp;
 
   lsm.getEvent(&a, &m, &g, &temp);
+  ax = accelX.updateEstimate(a.acceleration.x);
+  ay = accelY.updateEstimate(a.acceleration.y);
+  az = accelZ.updateEstimate(a.acceleration.z);
+
+  gx = gyroX.updateEstimate(g.gyro.x);
+  gy = gyroY.updateEstimate(g.gyro.y);
+  gz = gyroZ.updateEstimate(g.gyro.z);
 
   digitalWrite(LED_RED, LOW);
 
@@ -300,11 +330,23 @@ void loop()
   FLShockOut = String(FLShockVal);
   RRShockOut = String(RRShockVal);
   RLShockOut = String(RLShockVal);
+  filt_ax = String(ax);
+  filt_ay = String(ay);
+  filt_az = String(az);
+
+  filt_gx = String(gx);
+  filt_gy = String(gy);
+  filt_gz = String(gz);
+
+  loop_count++;
 
   if (timer_WriteToSD.check())
   {
+    samples_per_sec = loop_count/(loop_duration/1000);
     digitalWrite(LED_BLUE, HIGH);
     write_to_SD();
+    loop_duration=0;
+    loop_count=0;
   }
 
   if (timer_flush.check())
@@ -323,4 +365,10 @@ void loop()
   {
     digitalToggle(LED_BUILTIN); // turn the LED on (HIGH is the voltage level)
   }
+}
+
+void update_value_filtered(int &old_reading,int new_reading, const double ADC_ALPHA)
+{
+	old_reading = ADC_ALPHA * old_reading + (1-ADC_ALPHA) * new_reading;
+
 }
